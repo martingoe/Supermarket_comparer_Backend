@@ -867,9 +867,9 @@ public class Main {
 
                 ResultSet supermarketRestults = connection.prepareStatement("SELECT id, name FROM supermarket where name LIKE '%" + searchWord + "%';").executeQuery();
 
-                ResultSet itemResults = connection.prepareStatement("SELECT id, name FROM item where name LIKE '%" + searchWord + "%' OR description LIKE '%{\" + query.get(\"searchWord\") + \"}%';").executeQuery();
+                ResultSet itemResults = connection.prepareStatement("SELECT id, name FROM item where name LIKE '%" + searchWord + "%' OR description LIKE '%\" + query.get(\"searchWord\") + \"%';").executeQuery();
 
-                ResultSet companyResults = connection.prepareStatement("SELECT id, name FROM item_company where name LIKE '%" + searchWord + "%' OR description LIKE '%{\" + query.get(\"searchWord\") + \"}%';").executeQuery();
+                ResultSet companyResults = connection.prepareStatement("SELECT id, name FROM item_company where name LIKE '%" + searchWord + "%' OR description LIKE '%\" + query.get(\"searchWord\") + \"%';").executeQuery();
 
                 JSONArray countryArray = new JSONArray();
                 getSearchResults(countryResults, countryArray);
