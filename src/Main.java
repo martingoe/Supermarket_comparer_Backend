@@ -51,10 +51,13 @@ public class Main {
 
             server.createContext("/addLocation", new NewLocation());
             server.createContext("/removeLocation", new DeleteLocation());
+            server.createContext("/updateLocation", new UpdateLocation());
 
             server.createContext("/addUser", new NewUser());
             server.createContext("/removeUser", new DeleteUser());
             server.createContext("/login", new Login());
+
+            server.createContext("/search", new SearchHandler());
 
             server.setExecutor(null);
             server.start();
@@ -141,7 +144,7 @@ public class Main {
 
             try {
                 ResultSet supermarketSet = connection.prepareStatement("SELECT * FROM supermarket WHERE id=" + id + ";").executeQuery();
-                ResultSet locationsSet = connection.prepareStatement("SELECT location.*, countries.* FROM location LEFT JOIN countries ON location.countryId WHERE location.supermarketId=" + id + ";").executeQuery();
+                ResultSet locationsSet = connection.prepareStatement("SELECT location.*, countries.* FROM location LEFT JOIN countries ON countries.id=location.countryId WHERE location.supermarketId=" + id + ";").executeQuery();
                 ResultSet itemSet = connection.prepareStatement("SELECT prices.price, item.*, item_company.* FROM prices LEFT JOIN item ON prices.itemId LEFT JOIN item_company ON item.companyId WHERE prices.supermarketId = " + id + ";").executeQuery();
 
                 if (!Utilities.exists(supermarketSet)) {
@@ -350,7 +353,7 @@ public class Main {
                 statement.setInt(1, id);
                 ResultSet resultSet = statement.executeQuery();
 
-                PreparedStatement preparedStatement = connection.prepareStatement("SELECT location.supermarketId, supermarket.* FROM location LEFT JOIN supermarket ON location.supermarketId WHERE countryId=?;");
+                PreparedStatement preparedStatement = connection.prepareStatement("SELECT DISTINCT location.supermarketId, supermarket.* FROM location LEFT JOIN supermarket ON location.supermarketId WHERE countryId=?;");
                 preparedStatement.setInt(1, id);
                 ResultSet set = preparedStatement.executeQuery();
 
@@ -755,6 +758,27 @@ public class Main {
         }
     }
 
+    private class UpdateLocation implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) {
+            HashMap<String, String> query = Utilities.queryToMap(exchange.getRequestURI().getQuery());
+
+            try {
+                PreparedStatement statement = connection.prepareStatement("UPDATE location SET address=?, countryId=? WHERE id=?;");
+                statement.setString(1, query.get("address"));
+                statement.setInt(2, Integer.parseInt(query.get("countryId")));
+                statement.setInt(3, Integer.parseInt(query.get("id")));
+                statement.executeUpdate();
+
+                Utilities.write(exchange, 200, "{\"result\":\"Successfully updated the location\"}");
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
 
     //USER
     private class NewUser implements HttpHandler {
@@ -831,4 +855,53 @@ public class Main {
         }
     }
 
+
+    private class SearchHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) {
+            HashMap<String, String> query = Utilities.queryToMap(exchange.getRequestURI().getQuery());
+
+            String searchWord = query.get("searchWord");
+            try {
+                ResultSet countryResults = connection.prepareStatement("SELECT id, name FROM countries where name LIKE '%" + searchWord + "%';").executeQuery();
+
+                ResultSet supermarketRestults = connection.prepareStatement("SELECT id, name FROM supermarket where name LIKE '%" + searchWord + "%';").executeQuery();
+
+                ResultSet itemResults = connection.prepareStatement("SELECT id, name FROM item where name LIKE '%" + searchWord + "%' OR description LIKE '%{\" + query.get(\"searchWord\") + \"}%';").executeQuery();
+
+                ResultSet companyResults = connection.prepareStatement("SELECT id, name FROM item_company where name LIKE '%" + searchWord + "%' OR description LIKE '%{\" + query.get(\"searchWord\") + \"}%';").executeQuery();
+
+                JSONArray countryArray = new JSONArray();
+                getSearchResults(countryResults, countryArray);
+
+                JSONArray supermarketsArray = new JSONArray();
+                getSearchResults(supermarketRestults, supermarketsArray);
+
+                JSONArray itemsArray = new JSONArray();
+                getSearchResults(itemResults, itemsArray);
+
+                JSONArray companyArray = new JSONArray();
+                getSearchResults(companyResults, companyArray);
+
+                JSONObject returnObject = new JSONObject();
+                returnObject.put("companies", companyArray);
+                returnObject.put("items", itemsArray);
+                returnObject.put("supermarkets", supermarketsArray);
+                returnObject.put("countries", countryArray);
+                Utilities.write(exchange, 200, returnObject.toString());
+            } catch (SQLException | JSONException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+        private void getSearchResults(ResultSet countryResults, JSONArray countryArray) throws SQLException, JSONException {
+            while (countryResults.next()) {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("id", countryResults.getInt(1));
+                jsonObject.put("name", countryResults.getString(2));
+                countryArray.put(jsonObject);
+            }
+        }
+    }
 }
