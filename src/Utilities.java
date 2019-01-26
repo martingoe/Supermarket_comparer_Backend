@@ -134,11 +134,4 @@ class Utilities {
         jsonObject.put("name", resultSet.getString(2));
         jsonObject.put("description", resultSet.getString(3));
     }
-
-    static void getNormalPrice(JSONObject jsonObject, Connection connection) throws SQLException, JSONException {
-        PreparedStatement statement = connection.prepareStatement("SELECT prices.price FROM prices WHERE itemId=?");
-        statement.setInt(1, jsonObject.getInt("itemId"));
-        ResultSet set = statement.executeQuery();
-        jsonObject.put("normalPrice", Utilities.getId(set));
-    }
 }
