@@ -14,8 +14,8 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Random;
 
-public class Utilities {
-    public static HashMap<String, String> queryToMap(String query) {
+class Utilities {
+    static HashMap<String, String> queryToMap(String query) {
         HashMap<String, String> result = new HashMap<>();
 
         for (String s : query.split("&")) {
@@ -37,7 +37,7 @@ public class Utilities {
         }
     }
 
-    static void write(HttpExchange exchange, int responseCode, String text){
+    static void write(HttpExchange exchange, int responseCode, String text) {
         try {
             exchange.getResponseHeaders().add("Content-Type", "application/json; charset=utf-8");
             exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
@@ -50,11 +50,11 @@ public class Utilities {
         }
     }
 
-    public static boolean nullOrEmpty(String s) {
+    static boolean nullOrEmpty(String s) {
         return s == null || s.equals("");
     }
 
-    public static boolean exists(ResultSet set) {
+    static boolean exists(ResultSet set) {
         try {
             return set.next();
         } catch (SQLException e) {
@@ -63,7 +63,7 @@ public class Utilities {
         }
     }
 
-    public static String storingPepper(String password) {
+    static String storingPepper(String password) {
         String letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,-äüöÄÜÖ!\"§$%&/()=?{[]}\\";
         Random random = new Random();
         int i = random.nextInt(letters.length());
@@ -73,7 +73,7 @@ public class Utilities {
         return hash(password);
     }
 
-    public static int notStoringPepper(String password, String email, Connection connection) {
+    static int notStoringPepper(String password, String email, Connection connection) {
         String letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,-äüöÄÜÖ!\"§$%&/()=?{[]}\\";
         for (char c : letters.toCharArray()) {
             try {
@@ -83,7 +83,7 @@ public class Utilities {
                 statement.setString(2, email);
                 ResultSet s = statement.executeQuery();
 
-                if (exists(s)){
+                if (exists(s)) {
                     return getId(s);
                 }
             } catch (SQLException e) {
@@ -94,7 +94,7 @@ public class Utilities {
         return 0;
     }
 
-    public static int getId(ResultSet set) {
+    private static int getId(ResultSet set) {
         try {
             set.last();
             return set.getInt(1);
@@ -105,7 +105,7 @@ public class Utilities {
     }
 
 
-    public static String hash(String password) {
+    private static String hash(String password) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-512");
             byte[] bytes = digest.digest(password.getBytes());
@@ -120,5 +120,25 @@ public class Utilities {
             e.printStackTrace();
         }
         return "";
+    }
+
+    static void setLogoIdNameDescr(ResultSet resultSet, JSONObject jsonObject) throws JSONException, SQLException {
+        jsonObject.put("id", resultSet.getInt(1));
+        jsonObject.put("name", resultSet.getString(2));
+        jsonObject.put("logo", new String(resultSet.getBytes(3)));
+        jsonObject.put("description", resultSet.getString(4));
+    }
+
+    static void setIdNameDescr(ResultSet resultSet, JSONObject jsonObject) throws JSONException, SQLException {
+        jsonObject.put("id", resultSet.getInt(1));
+        jsonObject.put("name", resultSet.getString(2));
+        jsonObject.put("description", resultSet.getString(3));
+    }
+
+    static void getNormalPrice(JSONObject jsonObject, Connection connection) throws SQLException, JSONException {
+        PreparedStatement statement = connection.prepareStatement("SELECT prices.price FROM prices WHERE itemId=?");
+        statement.setInt(1, jsonObject.getInt("itemId"));
+        ResultSet set = statement.executeQuery();
+        jsonObject.put("normalPrice", Utilities.getId(set));
     }
 }

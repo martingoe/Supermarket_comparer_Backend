@@ -10,6 +10,8 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.sql.*;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 
 public class Main {
@@ -17,7 +19,7 @@ public class Main {
 
     private Main() {
         try {
-            String[] info = Files.readAllLines(Paths.get("res\\password.txt")).toArray(new String[0]);
+            String[] info = Files.readAllLines(Paths.get("src/password.txt")).toArray(new String[0]);
             connection = DriverManager.getConnection("jdbc:mysql://" + info[0] + ":3306/supermarket_comparer", info[1], info[2]);
 
             HttpServer server = HttpServer.create(new InetSocketAddress(2000), 0);
@@ -38,6 +40,11 @@ public class Main {
             server.createContext("/addPrice", new NewPrice());
             server.createContext("/removePrice", new DeletePrice());
             server.createContext("/getPrices", new GetPrices());
+
+            server.createContext("/addSale", new NewSale());
+            server.createContext("/removeSale", new DeleteSale());
+            server.createContext("/getSalesBySupermarket", new getSalesBySupermarket());
+            server.createContext("/getSalesByItem", new getSalesByItem());
 
             server.createContext("/addItem", new NewItem());
             server.createContext("/removeItem", new DeleteItem());
@@ -178,12 +185,12 @@ public class Main {
                     if (Utilities.exists(itemSet)) {
                         itemSet.beforeFirst();
 
-                        while(itemSet.next()){
+                        while (itemSet.next()) {
                             JSONObject jsonObject = new JSONObject();
 
                             jsonObject.put("price", itemSet.getInt(1));
                             jsonObject.put("itemId", itemSet.getInt(2));
-                            jsonObject.put("name",    itemSet.getString(3));
+                            jsonObject.put("name", itemSet.getString(3));
                             jsonObject.put("companyId", itemSet.getInt(6));
                             jsonObject.put("company", itemSet.getString(7));
                             jsonObject.put("logo", new String(itemSet.getBytes(8)));
@@ -254,7 +261,7 @@ public class Main {
 
     private class UpdateSupermarket implements HttpHandler {
         @Override
-        public void handle(HttpExchange exchange)  {
+        public void handle(HttpExchange exchange) {
             HashMap<String, String> query = Utilities.queryToMap(exchange.getRequestURI().getQuery());
 
             try {
@@ -343,7 +350,7 @@ public class Main {
         }
     }
 
-    private class GetCountryById implements HttpHandler{
+    private class GetCountryById implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) {
             int id = Integer.parseInt(Utilities.queryToMap(exchange.getRequestURI().getQuery()).get("id"));
@@ -385,7 +392,7 @@ public class Main {
 
     private class UpdateCountry implements HttpHandler {
         @Override
-        public void handle(HttpExchange exchange)  {
+        public void handle(HttpExchange exchange) {
             HashMap<String, String> query = Utilities.queryToMap(exchange.getRequestURI().getQuery());
 
             try {
@@ -395,7 +402,7 @@ public class Main {
                 statement.setInt(3, Integer.parseInt(query.get("id")));
                 statement.executeUpdate();
 
-                Utilities.write(exchange, 200, "{\"result\":\"Successfully updated the name and the logo\"}");
+                Utilities.write(exchange, 200, "{\"result\":\"Successfully updated the name and the flag\"}");
 
             } catch (SQLException e) {
                 e.printStackTrace();
@@ -460,9 +467,7 @@ public class Main {
                 preparedStatement.setInt(1, itemId);
                 ResultSet set = preparedStatement.executeQuery();
                 set.next();
-                jsonObject.put("id", set.getInt(1));
-                jsonObject.put("name", set.getString(2));
-                jsonObject.put("description", set.getString(3));
+                Utilities.setIdNameDescr(set, jsonObject);
                 jsonObject.put("companyId", set.getInt(4));
                 jsonObject.put("companyName", set.getString(6));
                 jsonObject.put("companyLogo", new String(set.getBytes(7)));
@@ -487,7 +492,6 @@ public class Main {
                 }
 
 
-
                 Utilities.write(exchange, 200, jsonObject.toString() + "::::" + pricesArray.toString());
             } catch (SQLException | JSONException e) {
                 e.printStackTrace();
@@ -495,6 +499,169 @@ public class Main {
         }
     }
 
+
+    //SALE
+    private class NewSale implements HttpHandler {
+        @Override
+        public void handle(HttpExchange httpExchange) {
+            HashMap<String, String> query = Utilities.queryToMap(httpExchange.getRequestURI().getQuery());
+            try {
+                int supermarketId = Integer.parseInt(query.get("supermarketId"));
+                int itemId = Integer.parseInt(query.get("itemId"));
+                double newPrice = Double.parseDouble(query.get("newPrice"));
+
+                String expirationDateString = query.get("expiration");
+
+                SimpleDateFormat format = new SimpleDateFormat("dd:MM:yyyy");
+
+
+                java.util.Date parsedDate = format.parse(expirationDateString);
+
+                java.sql.Date date = new java.sql.Date(parsedDate.getTime());
+
+                PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO sale VALUES (DEFAULT, ?, ?, ?, ?)");
+                preparedStatement.setDouble(1, newPrice);
+                preparedStatement.setInt(2, itemId);
+                preparedStatement.setInt(3, supermarketId);
+                preparedStatement.setDate(4, date);
+
+                preparedStatement.execute();
+
+                Utilities.write(httpExchange, 200, "{\"result\":\"Successfully added a new sale\"}");
+
+            } catch (ParseException | SQLException e) {
+                e.printStackTrace();
+                Utilities.write(httpExchange, 400, "{\"result\":\"Could not add a new sale\"}");
+            }
+
+
+        }
+    }
+
+    private class DeleteSale implements HttpHandler {
+        @Override
+        public void handle(HttpExchange httpExchange) {
+            HashMap<String, String> query = Utilities.queryToMap(httpExchange.getRequestURI().getQuery());
+
+            int id = Integer.parseInt(query.get("id"));
+
+            try {
+                PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM sale WHERE id=?");
+                preparedStatement.setInt(1, id);
+
+                preparedStatement.execute();
+
+                Utilities.write(httpExchange, 200, "{\"result\":\"Successfully removed a new sale\"}");
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private class getSalesBySupermarket implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) {
+            HashMap<String, String> query = Utilities.queryToMap(exchange.getRequestURI().getQuery());
+
+            int supermarketId = Integer.parseInt(query.get("supermarketId"));
+
+            try {
+                PreparedStatement preparedStatement = connection.prepareStatement("SELECT sale.*, item.*, " +
+                        "item_company.*, prices.* FROM sale LEFT JOIN item ON sale.itemId LEFT JOIN item_company ON " +
+                        "item.companyId JOIN prices ON sale.itemId=prices.itemId AND sale.supermarketId=prices.supermarketId " +
+                        "WHERE sale.supermarketId=?");
+                preparedStatement.setInt(1, supermarketId);
+                ResultSet resultSet = preparedStatement.executeQuery();
+
+
+                if (!Utilities.exists(resultSet)) {
+                    Utilities.write(exchange, 404, "{\"error\":\"There are no sales for this supermarket yet\"}");
+                } else {
+                    resultSet.beforeFirst();
+
+                    JSONArray jsonArray = new JSONArray();
+
+                    while (resultSet.next()) {
+                        JSONObject jsonObject = new JSONObject();
+
+                        jsonObject.put("id", resultSet.getInt(1));
+                        jsonObject.put("price", resultSet.getDouble(2));
+                        jsonObject.put("itemId", resultSet.getInt(3));
+                        jsonObject.put("date", resultSet.getDate(5).toString());
+
+
+                        jsonObject.put("itemId", resultSet.getInt(6));
+                        jsonObject.put("itemName", resultSet.getString(7));
+                        jsonObject.put("itemDescription", resultSet.getString(8));
+
+                        jsonObject.put("companyId", resultSet.getInt(9));
+                        jsonObject.put("companyName", resultSet.getString(11));
+                        jsonObject.put("companyLogo", resultSet.getString(12));
+                        jsonObject.put("companyDescription", resultSet.getString(13));
+
+
+                        jsonObject.put("normalPrice", resultSet.getDouble(17));
+
+
+                        jsonArray.put(jsonObject);
+                    }
+                    Utilities.write(exchange, 200, jsonArray.toString());
+                }
+
+            } catch (SQLException | JSONException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private class getSalesByItem implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) {
+            HashMap<String, String> query = Utilities.queryToMap(exchange.getRequestURI().getQuery());
+
+            int itemId = Integer.parseInt(query.get("itemId"));
+
+            try {
+                PreparedStatement preparedStatement = connection.prepareStatement("SELECT sale.*, supermarket.*, " +
+                        "prices.* FROM sale JOIN supermarket ON sale.supermarketId=supermarket.id JOIN prices ON " +
+                        "sale.itemId=prices.itemId AND sale.supermarketId=prices.supermarketId WHERE sale.supermarketId=?;");
+
+
+                preparedStatement.setInt(1, itemId);
+                ResultSet resultSet = preparedStatement.executeQuery();
+
+                if (!Utilities.exists(resultSet)) {
+                    Utilities.write(exchange, 404, "{\"error\":\"There are no sales for this item yet\"}");
+                } else {
+                    resultSet.beforeFirst();
+
+                    JSONArray jsonArray = new JSONArray();
+                    while(resultSet.next()){
+                        JSONObject jsonObject = new JSONObject();
+
+                        jsonObject.put("id", resultSet.getInt(1));
+                        jsonObject.put("price", resultSet.getDouble(2));
+                        jsonObject.put("supermarketId", resultSet.getInt(4));
+                        jsonObject.put("expiration", resultSet.getDate(5).toString());
+
+                        jsonObject.put("supermarketName", resultSet.getString(7));
+                        jsonObject.put("supermarketLogo", resultSet.getString(8));
+
+                        jsonObject.put("normalPrice", resultSet.getDouble(12));
+
+                        jsonArray.put(jsonObject);
+                    }
+                    Utilities.write(exchange, 200, jsonArray.toString());
+                }
+            } catch (SQLException | JSONException e) {
+                e.printStackTrace();
+            }
+
+        }
+
+
+    }
 
     //ITEM
     private class NewItem implements HttpHandler {
@@ -551,9 +718,7 @@ public class Main {
                     while (resultSet.next()) {
                         JSONObject jsonObject = new JSONObject();
 
-                        jsonObject.put("id", resultSet.getInt(1));
-                        jsonObject.put("name", resultSet.getString(2));
-                        jsonObject.put("description", resultSet.getString(3));
+                        Utilities.setIdNameDescr(resultSet, jsonObject);
 
                         jsonObject.put("companyId", resultSet.getInt(4));
                         jsonObject.put("company", resultSet.getString(5));
@@ -629,10 +794,7 @@ public class Main {
                     while (resultSet.next()) {
                         JSONObject jsonObject = new JSONObject();
 
-                        jsonObject.put("id", resultSet.getInt(1));
-                        jsonObject.put("name", resultSet.getString(2));
-                        jsonObject.put("logo", new String(resultSet.getBytes(3)));
-                        jsonObject.put("description", resultSet.getString(4));
+                        Utilities.setLogoIdNameDescr(resultSet, jsonObject);
 
 
                         jsonArray.put(jsonObject);
@@ -664,29 +826,23 @@ public class Main {
 
                 JSONObject jsonObject = new JSONObject();
 
-                if(Utilities.exists(resultSet)) {
+                if (Utilities.exists(resultSet)) {
                     resultSet.beforeFirst();
                     resultSet.next();
-                    jsonObject.put("id", resultSet.getInt(1));
-                    jsonObject.put("name", resultSet.getString(2));
-                    jsonObject.put("logo", new String(resultSet.getBytes(3)));
-                    jsonObject.put("description", resultSet.getString(4));
+                    Utilities.setLogoIdNameDescr(resultSet, jsonObject);
 
                     JSONArray jsonArray = new JSONArray();
                     while (set.next()) {
                         JSONObject object = new JSONObject();
 
-                        object.put("id", set.getInt(1));
-                        object.put("name", set.getString(2));
-                        object.put("description", set.getString(3));
+                        Utilities.setIdNameDescr(set, object);
 
                         jsonArray.put(object);
                     }
                     jsonObject.put("items", jsonArray);
 
                     Utilities.write(exchange, 200, jsonObject.toString());
-                }
-                else{
+                } else {
                     Utilities.write(exchange, 404, "{\"error\":\"The company doesn't exist\"}");
                 }
             } catch (SQLException | JSONException e) {
@@ -697,7 +853,7 @@ public class Main {
 
     private class UpdateItem_Company implements HttpHandler {
         @Override
-        public void handle(HttpExchange exchange)  {
+        public void handle(HttpExchange exchange) {
             HashMap<String, String> query = Utilities.queryToMap(exchange.getRequestURI().getQuery());
 
             try {
@@ -779,7 +935,6 @@ public class Main {
     }
 
 
-
     //USER
     private class NewUser implements HttpHandler {
         @Override
@@ -856,6 +1011,7 @@ public class Main {
     }
 
 
+    //SEARCH
     private class SearchHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) {
@@ -904,4 +1060,6 @@ public class Main {
             }
         }
     }
+
+
 }
