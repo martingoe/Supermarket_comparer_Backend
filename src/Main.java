@@ -152,7 +152,7 @@ public class Main {
             try {
                 ResultSet supermarketSet = connection.prepareStatement("SELECT * FROM supermarket WHERE id=" + id + ";").executeQuery();
                 ResultSet locationsSet = connection.prepareStatement("SELECT location.*, countries.* FROM location LEFT JOIN countries ON countries.id=location.countryId WHERE location.supermarketId=" + id + ";").executeQuery();
-                ResultSet itemSet = connection.prepareStatement("SELECT prices.price, item.*, item_company.* FROM prices LEFT JOIN item ON prices.itemId LEFT JOIN item_company ON item.companyId WHERE prices.supermarketId = " + id + ";").executeQuery();
+                ResultSet itemSet = connection.prepareStatement("SELECT price, item.*, item_company.* FROM prices JOIN item ON prices.itemId=item.id JOIN item_company ON item.companyId=item_company.id WHERE prices.supermarketId=" + id + ";").executeQuery();
 
                 if (!Utilities.exists(supermarketSet)) {
                     Utilities.write(exchange, 404, "{\"error\":\"The supermarket doesn't exist\"}");
@@ -462,7 +462,7 @@ public class Main {
             try {
                 JSONObject jsonObject = new JSONObject();
 
-                PreparedStatement preparedStatement = connection.prepareStatement("SELECT item.*, item_company.* FROM item LEFT JOIN item_company ON item.companyId WHERE item.id=?;");
+                PreparedStatement preparedStatement = connection.prepareStatement("SELECT item.*, item_company.* FROM item LEFT JOIN item_company ON item.companyId=item_company.id WHERE item.id=?;");
 
                 preparedStatement.setInt(1, itemId);
                 ResultSet set = preparedStatement.executeQuery();
@@ -473,7 +473,7 @@ public class Main {
                 jsonObject.put("companyLogo", new String(set.getBytes(7)));
 
 
-                PreparedStatement statement = connection.prepareStatement("SELECT prices.*, supermarket.* FROM prices LEFT JOIN supermarket ON supermarketId WHERE itemId=?;");
+                PreparedStatement statement = connection.prepareStatement("SELECT prices.*, supermarket.* FROM prices LEFT JOIN supermarket ON prices.supermarketId=supermarket.id WHERE prices.itemId=?;");
                 statement.setInt(1, itemId);
                 ResultSet resultSet = statement.executeQuery();
 
@@ -569,7 +569,7 @@ public class Main {
             try {
                 PreparedStatement preparedStatement = connection.prepareStatement("SELECT sale.*, item.*, " +
                         "item_company.*, prices.* FROM sale LEFT JOIN item ON sale.itemId LEFT JOIN item_company ON " +
-                        "item.companyId JOIN prices ON sale.itemId=prices.itemId AND sale.supermarketId=prices.supermarketId " +
+                        "item.companyId=item_company.id JOIN prices ON sale.itemId=prices.itemId AND sale.supermarketId=prices.supermarketId " +
                         "WHERE sale.supermarketId=?");
                 preparedStatement.setInt(1, supermarketId);
                 ResultSet resultSet = preparedStatement.executeQuery();
@@ -708,7 +708,7 @@ public class Main {
         @Override
         public void handle(HttpExchange exchange) {
             try {
-                ResultSet resultSet = connection.prepareStatement("SELECT item.*, item_company.name, item_company.logo FROM item LEFT JOIN item_company ON item.companyId").executeQuery();
+                ResultSet resultSet = connection.prepareStatement("SELECT item.*, item_company.name, item_company.logo FROM item LEFT JOIN item_company ON item.companyId=item_company.id").executeQuery();
 
                 if (!Utilities.exists(resultSet)) {
                     Utilities.write(exchange, 404, "{\"error\":\"There are no items yet\"}");
