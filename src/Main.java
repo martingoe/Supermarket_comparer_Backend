@@ -48,7 +48,8 @@ public class Main {
 
             server.createContext("/addItem", new NewItem());
             server.createContext("/removeItem", new DeleteItem());
-            server.createContext("/getItems", new getItems());
+            server.createContext("/getItems", new GetItems());
+            server.createContext("/updateItem", new UpdateItem());
 
             server.createContext("/addItem_company", new NewItem_Company());
             server.createContext("/removeItem_company", new DeleteItem_Company());
@@ -704,7 +705,7 @@ public class Main {
         }
     }
 
-    private class getItems implements HttpHandler {
+    private class GetItems implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) {
             try {
@@ -729,6 +730,26 @@ public class Main {
                     Utilities.write(exchange, 200, jsonArray.toString());
                 }
             } catch (SQLException | JSONException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private class UpdateItem implements HttpHandler {
+        @Override
+        public void handle(HttpExchange httpExchange) {
+            HashMap<String, String> query = Utilities.queryToMap(httpExchange.getRequestURI().getQuery());
+            System.out.println(query.get("description"));
+            try {
+                PreparedStatement statement = connection.prepareStatement("UPDATE item SET name=?, description=? WHERE id=?;");
+                statement.setString(1, query.get("name"));
+                statement.setInt(3, Integer.parseInt(query.get("id")));
+                statement.setString(2, query.get("description"));
+                statement.executeUpdate();
+
+                Utilities.write(httpExchange, 200, "{\"result\":\"Successfully updated the name and the description\"}");
+
+            } catch (SQLException e) {
                 e.printStackTrace();
             }
         }
@@ -1060,6 +1081,7 @@ public class Main {
             }
         }
     }
+
 
 
 }
