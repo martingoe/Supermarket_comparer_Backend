@@ -13,6 +13,7 @@ import java.sql.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.HashMap;
+import java.util.concurrent.Executors;
 
 public class Main {
     private Connection connection;
@@ -67,7 +68,8 @@ public class Main {
 
             server.createContext("/search", new SearchHandler());
 
-            server.setExecutor(null);
+
+            server.setExecutor(Executors.newCachedThreadPool());
             server.start();
         } catch (IOException | SQLException e) {
             e.printStackTrace();
@@ -361,7 +363,7 @@ public class Main {
                 statement.setInt(1, id);
                 ResultSet resultSet = statement.executeQuery();
 
-                PreparedStatement preparedStatement = connection.prepareStatement("SELECT DISTINCT location.supermarketId, supermarket.* FROM location LEFT JOIN supermarket ON location.supermarketId WHERE countryId=?;");
+                PreparedStatement preparedStatement = connection.prepareStatement("SELECT DISTINCT location.supermarketId, supermarket.* FROM location LEFT JOIN supermarket ON location.supermarketId=supermarket.id WHERE countryId=?;");
                 preparedStatement.setInt(1, id);
                 ResultSet set = preparedStatement.executeQuery();
 
@@ -638,7 +640,7 @@ public class Main {
                     resultSet.beforeFirst();
 
                     JSONArray jsonArray = new JSONArray();
-                    while(resultSet.next()){
+                    while (resultSet.next()) {
                         JSONObject jsonObject = new JSONObject();
 
                         jsonObject.put("id", resultSet.getInt(1));
@@ -771,7 +773,6 @@ public class Main {
                 statement.setString(1, name);
                 statement.setBytes(2, logo);
                 statement.setString(3, description);
-
 
                 statement.executeUpdate();
 
@@ -1081,7 +1082,4 @@ public class Main {
             }
         }
     }
-
-
-
 }
