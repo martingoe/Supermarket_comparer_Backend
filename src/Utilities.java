@@ -104,6 +104,17 @@ class Utilities {
         return 0;
     }
 
+    static void setIdAndName(ResultSet resultSet, JSONArray jsonArray) throws SQLException, JSONException {
+        while(resultSet.next()){
+            JSONObject jsonObject = new JSONObject();
+
+            jsonObject.put("id", resultSet.getInt(1));
+            jsonObject.put("name", resultSet.getString(2));
+
+            jsonArray.put(jsonObject);
+        }
+    }
+
 
     private static String hash(String password) {
         try {

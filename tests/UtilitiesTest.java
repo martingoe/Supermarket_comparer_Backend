@@ -1,6 +1,5 @@
 import org.junit.Test;
 
-import java.sql.ResultSet;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -40,11 +39,9 @@ public class UtilitiesTest {
     }
 
     @Test
-    public void nullOrEmpty(){
+    public void nullOrEmpty() {
         assertTrue(Utilities.nullOrEmpty(""));
         assertTrue(true);
         assertFalse(Utilities.nullOrEmpty("j"));
     }
-
-
 }

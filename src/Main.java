@@ -21,7 +21,8 @@ public class Main {
     private Main() {
         try {
             String[] info = Files.readAllLines(Paths.get("src/password.txt")).toArray(new String[0]);
-            connection = DriverManager.getConnection("jdbc:mysql://" + info[0] + ":3306/supermarket_comparer", info[1], info[2]);
+            connection = DriverManager.getConnection("jdbc:mysql://" + info[0] + ":3306/supermarket_comparer",
+                    info[1], info[2]);
 
             HttpServer server = HttpServer.create(new InetSocketAddress(2000), 0);
 
@@ -50,6 +51,7 @@ public class Main {
             server.createContext("/addItem", new NewItem());
             server.createContext("/removeItem", new DeleteItem());
             server.createContext("/getItems", new GetItems());
+            server.createContext("/getItemsByCompanyId", new GetItemsByCompanyId());
             server.createContext("/updateItem", new UpdateItem());
 
             server.createContext("/addItem_company", new NewItem_Company());
@@ -737,11 +739,31 @@ public class Main {
         }
     }
 
+    private class GetItemsByCompanyId implements HttpHandler {
+        @Override
+        public void handle(HttpExchange httpExchange) {
+            HashMap<String, String> query = Utilities.queryToMap(httpExchange.getRequestURI().getQuery());
+
+            try {
+                PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM item WHERE companyId=?");
+                preparedStatement.setInt(1, Integer.parseInt(query.get("id")));
+                ResultSet resultSet = preparedStatement.executeQuery();
+
+                JSONArray jsonArray = new JSONArray();
+                Utilities.setIdAndName(resultSet, jsonArray);
+
+                Utilities.write(httpExchange, 200, jsonArray.toString());
+
+            } catch (SQLException | JSONException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     private class UpdateItem implements HttpHandler {
         @Override
         public void handle(HttpExchange httpExchange) {
             HashMap<String, String> query = Utilities.queryToMap(httpExchange.getRequestURI().getQuery());
-            System.out.println(query.get("description"));
             try {
                 PreparedStatement statement = connection.prepareStatement("UPDATE item SET name=?, description=? WHERE id=?;");
                 statement.setString(1, query.get("name"));
@@ -1074,12 +1096,7 @@ public class Main {
         }
 
         private void getSearchResults(ResultSet countryResults, JSONArray countryArray) throws SQLException, JSONException {
-            while (countryResults.next()) {
-                JSONObject jsonObject = new JSONObject();
-                jsonObject.put("id", countryResults.getInt(1));
-                jsonObject.put("name", countryResults.getString(2));
-                countryArray.put(jsonObject);
-            }
+            Utilities.setIdAndName(countryResults, countryArray);
         }
     }
 }
