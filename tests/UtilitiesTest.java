@@ -41,7 +41,6 @@ public class UtilitiesTest {
     @Test
     public void nullOrEmpty() {
         assertTrue(Utilities.nullOrEmpty(""));
-        assertTrue(true);
         assertFalse(Utilities.nullOrEmpty("j"));
     }
 }

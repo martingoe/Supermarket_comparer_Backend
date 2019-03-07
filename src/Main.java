@@ -42,6 +42,7 @@ public class Main {
             server.createContext("/addPrice", new NewPrice());
             server.createContext("/removePrice", new DeletePrice());
             server.createContext("/getPrices", new GetPrices());
+            server.createContext("/updatePrice", new UpdatePrice());
 
             server.createContext("/addSale", new NewSale());
             server.createContext("/removeSale", new DeleteSale());
@@ -157,7 +158,7 @@ public class Main {
             try {
                 ResultSet supermarketSet = connection.prepareStatement("SELECT * FROM supermarket WHERE id=" + id + ";").executeQuery();
                 ResultSet locationsSet = connection.prepareStatement("SELECT location.*, countries.* FROM location LEFT JOIN countries ON countries.id=location.countryId WHERE location.supermarketId=" + id + ";").executeQuery();
-                ResultSet itemSet = connection.prepareStatement("SELECT price, item.*, item_company.* FROM prices JOIN item ON prices.itemId=item.id JOIN item_company ON item.companyId=item_company.id WHERE prices.supermarketId=" + id + ";").executeQuery();
+                ResultSet itemSet = connection.prepareStatement("SELECT prices.id, prices.price, item.*, item_company.* FROM prices JOIN item ON prices.itemId=item.id JOIN item_company ON item.companyId=item_company.id WHERE prices.supermarketId=" + id + ";").executeQuery();
 
                 if (!Utilities.exists(supermarketSet)) {
                     Utilities.write(exchange, 404, "{\"error\":\"The supermarket doesn't exist\"}");
@@ -193,12 +194,13 @@ public class Main {
                         while (itemSet.next()) {
                             JSONObject jsonObject = new JSONObject();
 
-                            jsonObject.put("price", itemSet.getInt(1));
-                            jsonObject.put("itemId", itemSet.getInt(2));
-                            jsonObject.put("name", itemSet.getString(3));
-                            jsonObject.put("companyId", itemSet.getInt(6));
-                            jsonObject.put("company", itemSet.getString(7));
-                            jsonObject.put("logo", new String(itemSet.getBytes(8)));
+                            jsonObject.put("id", itemSet.getInt(1));
+                            jsonObject.put("price", itemSet.getDouble(2));
+                            jsonObject.put("itemId", itemSet.getInt(3));
+                            jsonObject.put("name", itemSet.getString(4));
+                            jsonObject.put("companyId", itemSet.getInt(7));
+                            jsonObject.put("company", itemSet.getString(8));
+                            jsonObject.put("logo", new String(itemSet.getBytes(9)));
 
                             pricesArray.put(jsonObject);
                         }
@@ -504,6 +506,24 @@ public class Main {
         }
     }
 
+    private class UpdatePrice implements HttpHandler {
+        @Override
+        public void handle(HttpExchange httpExchange) {
+            HashMap<String, String> query = Utilities.queryToMap(httpExchange.getRequestURI().getQuery());
+
+            try {
+                PreparedStatement preparedStatement = connection.prepareStatement("UPDATE prices SET price=? WHERE id=?");
+                preparedStatement.setDouble(1, Double.parseDouble(query.get("price")));
+                preparedStatement.setInt(2, Integer.parseInt(query.get("id")));
+                preparedStatement.executeUpdate();
+
+                Utilities.write(httpExchange, 200, "{\"result\":\"Successfully updated the price\"}");
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 
     //SALE
     private class NewSale implements HttpHandler {
@@ -701,6 +721,10 @@ public class Main {
                 PreparedStatement statement = connection.prepareStatement("DELETE FROM item WHERE id = ?");
                 statement.setInt(1, id);
                 statement.executeUpdate();
+
+                PreparedStatement pricesStatement = connection.prepareStatement("DELETE FROM prices WHERE itemId = ?");
+                pricesStatement.setInt(1, id);
+                pricesStatement.executeUpdate();
 
                 Utilities.write(exchange, 200, "{\"result\":\"Successfully removed a item\"}");
             } catch (SQLException e) {
@@ -1099,4 +1123,6 @@ public class Main {
             Utilities.setIdAndName(countryResults, countryArray);
         }
     }
+
+
 }
