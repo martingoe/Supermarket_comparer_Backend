@@ -133,14 +133,14 @@ class Utilities {
         return "";
     }
 
-    static void setLogoIdNameDescr(ResultSet resultSet, JSONObject jsonObject) throws JSONException, SQLException {
+    static void setLogoIdNameDescription(ResultSet resultSet, JSONObject jsonObject) throws JSONException, SQLException {
         jsonObject.put("id", resultSet.getInt(1));
         jsonObject.put("name", resultSet.getString(2));
         jsonObject.put("logo", new String(resultSet.getBytes(3)));
         jsonObject.put("description", resultSet.getString(4));
     }
 
-    static void setIdNameDescr(ResultSet resultSet, JSONObject jsonObject) throws JSONException, SQLException {
+    static void setIdNameDescription(ResultSet resultSet, JSONObject jsonObject) throws JSONException, SQLException {
         jsonObject.put("id", resultSet.getInt(1));
         jsonObject.put("name", resultSet.getString(2));
         jsonObject.put("description", resultSet.getString(3));

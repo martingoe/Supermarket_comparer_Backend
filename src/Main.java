@@ -476,7 +476,7 @@ public class Main {
                 preparedStatement.setInt(1, itemId);
                 ResultSet set = preparedStatement.executeQuery();
                 set.next();
-                Utilities.setIdNameDescr(set, jsonObject);
+                Utilities.setIdNameDescription(set, jsonObject);
                 jsonObject.put("companyId", set.getInt(4));
                 jsonObject.put("companyName", set.getString(6));
                 jsonObject.put("companyLogo", new String(set.getBytes(7)));
@@ -749,7 +749,7 @@ public class Main {
                     while (resultSet.next()) {
                         JSONObject jsonObject = new JSONObject();
 
-                        Utilities.setIdNameDescr(resultSet, jsonObject);
+                        Utilities.setIdNameDescription(resultSet, jsonObject);
 
                         jsonObject.put("companyId", resultSet.getInt(4));
                         jsonObject.put("company", resultSet.getString(5));
@@ -864,7 +864,7 @@ public class Main {
                     while (resultSet.next()) {
                         JSONObject jsonObject = new JSONObject();
 
-                        Utilities.setLogoIdNameDescr(resultSet, jsonObject);
+                        Utilities.setLogoIdNameDescription(resultSet, jsonObject);
 
 
                         jsonArray.put(jsonObject);
@@ -899,13 +899,13 @@ public class Main {
                 if (Utilities.exists(resultSet)) {
                     resultSet.beforeFirst();
                     resultSet.next();
-                    Utilities.setLogoIdNameDescr(resultSet, jsonObject);
+                    Utilities.setLogoIdNameDescription(resultSet, jsonObject);
 
                     JSONArray jsonArray = new JSONArray();
                     while (set.next()) {
                         JSONObject object = new JSONObject();
 
-                        Utilities.setIdNameDescr(set, object);
+                        Utilities.setIdNameDescription(set, object);
 
                         jsonArray.put(object);
                     }
