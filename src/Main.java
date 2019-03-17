@@ -294,11 +294,13 @@ public class Main {
             HashMap<String, String> query = Utilities.queryToMap(exchange.getRequestURI().getQuery());
 
             String name = query.get("name");
+            String code = query.get("code");
             byte[] flag = query.get("flag").getBytes();
             try {
-                PreparedStatement statement = connection.prepareStatement("INSERT INTO countries VALUES (DEFAULT, ?, ?);");
+                PreparedStatement statement = connection.prepareStatement("INSERT INTO countries VALUES (DEFAULT, ?, ?, ?);");
                 statement.setString(1, name);
                 statement.setBytes(2, flag);
+                statement.setString(3, code);
                 statement.executeUpdate();
 
                 Utilities.write(exchange, 200, "{\"result\":\"Successfully added a new country\"}");
